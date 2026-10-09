@@ -1,0 +1,5 @@
+/icicle
+/icicle.exe
+*.pem
+*.key
+coverage.out

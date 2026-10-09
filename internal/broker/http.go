@@ -1,0 +1,102 @@
+package broker
+
+import (
+	"crypto/rand"
+	"errors"
+	"net/http"
+	"time"
+
+	"github.com/gorilla/websocket"
+	"google.golang.org/protobuf/proto"
+
+	"icicle/internal/wire"
+)
+
+func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", "GET")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if r.URL.Path == "/healthz" {
+		b.mu.Lock()
+		closed := b.closed
+		b.mu.Unlock()
+		if closed {
+			http.Error(w, "unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Write([]byte("ok\n"))
+		return
+	}
+	if r.URL.Path != "/ws" {
+		http.NotFound(w, r)
+		return
+	}
+	b.mu.Lock()
+	if b.closed {
+		b.mu.Unlock()
+		http.Error(w, "server shutting down", http.StatusServiceUnavailable)
+		return
+	}
+	p := &peer{
+		out:         make(chan outbound, 8),
+		done:        make(chan struct{}),
+		writerDone:  make(chan struct{}),
+		deadline:    time.Now().Add(b.config.RegistrationTimeout),
+		tokens:      60,
+		lastMessage: time.Now(),
+	}
+	b.connections[p] = struct{}{}
+	b.wg.Add(1)
+	b.mu.Unlock()
+	defer b.wg.Done()
+	defer b.remove(p)
+	upgrader := websocket.Upgrader{HandshakeTimeout: 10 * time.Second, ReadBufferSize: 4096, WriteBufferSize: 4096}
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	b.mu.Lock()
+	p.conn = conn
+	if b.closed {
+		b.mu.Unlock()
+		p.close()
+		return
+	}
+	b.mu.Unlock()
+	defer p.close()
+	p.challenge = make([]byte, 32)
+	if _, err = rand.Read(p.challenge); err != nil {
+		return
+	}
+	conn.SetReadLimit(128 * 1024)
+	conn.SetReadDeadline(time.Now().Add(45 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(45 * time.Second))
+	})
+	go p.writeLoop()
+	defer func() { p.close(); <-p.writerDone }()
+	p.send(&wire.Envelope{Kind: wire.Envelope_SERVER_CHALLENGE, Challenge: p.challenge}, false)
+	for {
+		kind, data, err := conn.ReadMessage()
+		if err != nil {
+			return
+		}
+		message := &wire.Envelope{}
+		if kind != websocket.BinaryMessage || (proto.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(data, message) != nil {
+			err = errors.New("invalid binary protobuf frame")
+		} else {
+			err = b.handle(p, message)
+		}
+		if err != nil {
+			p.send(&wire.Envelope{Kind: wire.Envelope_ERROR, Error: err.Error()}, true)
+			select {
+			case <-p.writerDone:
+			case <-time.After(6 * time.Second):
+			}
+			return
+		}
+	}
+}

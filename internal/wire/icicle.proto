@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package icicle.v1;
+option go_package = "icicle/internal/wire";
+
+message Envelope {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    SERVER_CHALLENGE = 1;
+    REGISTER_HOST = 2;
+    REGISTER_CLIENT = 3;
+    REGISTERED = 4;
+    JOIN_REQUEST = 5;
+    ADMITTED = 6;
+    REJECTED = 7;
+    DESCRIPTION = 8;
+    CANDIDATE = 9;
+    PEER_LEFT = 10;
+    ERROR = 11;
+  }
+  Kind kind = 1;
+  string session_id = 2;
+  string peer_id = 3;
+  string request_id = 4;
+  string description_type = 5;
+  string description = 6;
+  string candidate = 7;
+  string mid = 8;
+  bytes payload = 9;
+  bytes signature = 10;
+  bytes public_key = 11;
+  bytes challenge = 12;
+  string error = 13;
+}
+
+message JoinRequest {
+  uint32 version = 1;
+  string session_id = 2;
+  string request_id = 3;
+  bytes client_public_key = 4;
+  string offer = 5;
+  bytes challenge = 6;
+}
+
+message ClientTicket {
+  uint32 version = 1;
+  string session_id = 2;
+  string peer_id = 3;
+  string request_id = 4;
+  bytes client_public_key = 5;
+  bytes host_public_key = 6;
+  bytes offer_sha256 = 7;
+  int64 expires_unix = 8;
+  bytes ticket_id = 9;
+}
+
+message HostAnswer {
+  bytes ticket_payload = 1;
+  bytes ticket_signature = 2;
+  string answer = 3;
+}
