@@ -13,8 +13,15 @@ import (
 )
 
 func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", "GET")
+		w.Header().Set("Allow", "GET, OPTIONS")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -53,8 +60,13 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	b.mu.Unlock()
 	defer b.wg.Done()
 	defer b.remove(p)
-	upgrader := websocket.Upgrader{HandshakeTimeout: 10 * time.Second, ReadBufferSize: 4096, WriteBufferSize: 4096}
-	conn, err := upgrader.Upgrade(w, r, nil)
+	upgrader := websocket.Upgrader{
+		HandshakeTimeout: 10 * time.Second,
+		ReadBufferSize:   4096,
+		WriteBufferSize:  4096,
+		CheckOrigin:      func(*http.Request) bool { return true },
+	}
+	conn, err := upgrader.Upgrade(w, r, w.Header())
 	if err != nil {
 		return
 	}
