@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"icicle/internal/wire"
@@ -48,19 +49,22 @@ func LoadAuthority(path string) (ed25519.PrivateKey, error) {
 	return ed25519.NewKeyFromSeed(seed), nil
 }
 
-func ParseAdminKeys(data string) ([]ed25519.PublicKey, error) {
+func ParseAdminKeys(admins map[string]bool) ([]ed25519.PublicKey, error) {
 	keys := []ed25519.PublicKey{}
-	for _, line := range strings.Split(data, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		encoded, ok := strings.CutPrefix(line, "ed25519:")
+	names := make([]string, 0, len(admins))
+	for name := range admins {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		encoded, ok := strings.CutPrefix(name, "ed25519:")
 		key, err := base64.RawURLEncoding.DecodeString(encoded)
 		if !ok || err != nil || len(key) != ed25519.PublicKeySize || base64.RawURLEncoding.EncodeToString(key) != encoded {
-			return nil, fmt.Errorf("invalid admin UniqueUserId %q", line)
+			return nil, fmt.Errorf("invalid admin UniqueUserId %q", name)
 		}
-		keys = append(keys, ed25519.PublicKey(key))
+		if admins[name] {
+			keys = append(keys, ed25519.PublicKey(key))
+		}
 	}
 	return keys, nil
 }
