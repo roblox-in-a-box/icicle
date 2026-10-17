@@ -17,6 +17,7 @@ import (
 func main() { os.Exit(run()) }
 
 func run() int {
+	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.LUTC)
 	addr := flag.String("listen", "127.0.0.1:8080", "HTTP listen address")
 	keyPath := flag.String("authority-key", "icicle-authority.key", "Ticket signing key file, generated if missing")
 	configPath := flag.String("config", "config.json", `Config file with {"Admins":{"ed25519:public-key":true}}, optional by default`)
@@ -47,6 +48,7 @@ func run() int {
 		log.Printf("broker_failed reason=%q", err)
 		return 1
 	}
+	log.Printf("broker_ready listen=%q config=%q authority_key=%q admins=%d registration_timeout_seconds=35 admission_timeout_seconds=30", *addr, *configPath, *keyPath, len(admins))
 	server := &http.Server{
 		Addr:              *addr,
 		Handler:           b,
@@ -69,6 +71,7 @@ func run() int {
 			return 1
 		}
 	case <-ctx.Done():
+		log.Printf("server_stopping reason=%q", ctx.Err())
 		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		server.Shutdown(shutdown)

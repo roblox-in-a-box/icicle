@@ -18,13 +18,14 @@ type session struct {
 
 type Broker struct {
 	// mu protects lobby membership, admission state, connection registry
-	mu          sync.Mutex
-	config      Config
-	sessions    map[string]*session
-	connections map[*peer]struct{}
-	closed      bool
-	done        chan struct{}
-	wg          sync.WaitGroup
+	mu               sync.Mutex
+	config           Config
+	sessions         map[string]*session
+	connections      map[*peer]struct{}
+	nextConnectionID uint64
+	closed           bool
+	done             chan struct{}
+	wg               sync.WaitGroup
 }
 
 func New(config Config) (*Broker, error) {
@@ -80,11 +81,13 @@ func (b *Broker) remove(p *peer) {
 		if b.sessions[s.id] != s {
 			return
 		}
+		p.logf("lobby_closed", "lobby=%q clients=%d reason=%q", s.id, len(s.clients), "host disconnected")
 		delete(b.sessions, s.id)
 		for _, c := range s.clients {
 			c.send(&wire.Envelope{Kind: wire.Envelope_ERROR, SessionId: s.id, Error: "Host disconnected"}, true)
 		}
 	} else if s.clients[p.id] == p {
+		p.logf("client_removed", "lobby=%q peer=%q request=%q admitted=%t", s.id, p.id, p.request.RequestId, p.admitted)
 		delete(s.clients, p.id)
 		s.host.send(&wire.Envelope{Kind: wire.Envelope_PEER_LEFT, SessionId: s.id, PeerId: p.id, RequestId: p.request.RequestId}, false)
 	}
@@ -102,6 +105,19 @@ func (b *Broker) expire() {
 			b.mu.Lock()
 			for p := range b.connections {
 				if p.conn != nil && (p.session == nil || (p != p.session.host && !p.admitted)) && now.After(p.deadline) {
+					phase := "registration"
+					lobby, request := "", ""
+					if p.session != nil {
+						phase = "admission"
+						lobby = p.session.id
+						request = p.request.RequestId
+					}
+					select {
+					case <-p.done:
+						continue
+					default:
+					}
+					p.logf("connection_expired", "phase=%s lobby=%q request=%q overdue_ms=%d", phase, lobby, request, now.Sub(p.deadline).Milliseconds())
 					p.close()
 				}
 			}

@@ -114,6 +114,7 @@ type Envelope struct {
 	Error           string                 `protobuf:"bytes,13,opt,name=error,proto3" json:"error,omitempty"`
 	Authority       *AuthorityPolicy       `protobuf:"bytes,14,opt,name=authority,proto3" json:"authority,omitempty"`
 	Build           *BuildCompatibility    `protobuf:"bytes,15,opt,name=build,proto3" json:"build,omitempty"`
+	ServerTimeUnix  int64                  `protobuf:"varint,16,opt,name=server_time_unix,json=serverTimeUnix,proto3" json:"server_time_unix,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -251,6 +252,13 @@ func (x *Envelope) GetBuild() *BuildCompatibility {
 		return x.Build
 	}
 	return nil
+}
+
+func (x *Envelope) GetServerTimeUnix() int64 {
+	if x != nil {
+		return x.ServerTimeUnix
+	}
+	return 0
 }
 
 type AuthorityPolicy struct {
@@ -737,7 +745,7 @@ var File_icicle_proto protoreflect.FileDescriptor
 
 const file_icicle_proto_rawDesc = "" +
 	"\n" +
-	"\ficicle.proto\x12\ticicle.v1\"\xdb\x05\n" +
+	"\ficicle.proto\x12\ticicle.v1\"\x85\x06\n" +
 	"\bEnvelope\x12,\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x18.icicle.v1.Envelope.KindR\x04kind\x12\x1d\n" +
 	"\n" +
@@ -757,7 +765,8 @@ const file_icicle_proto_rawDesc = "" +
 	"\tchallenge\x18\f \x01(\fR\tchallenge\x12\x14\n" +
 	"\x05error\x18\r \x01(\tR\x05error\x128\n" +
 	"\tauthority\x18\x0e \x01(\v2\x1a.icicle.v1.AuthorityPolicyR\tauthority\x123\n" +
-	"\x05build\x18\x0f \x01(\v2\x1d.icicle.v1.BuildCompatibilityR\x05build\"\xd2\x01\n" +
+	"\x05build\x18\x0f \x01(\v2\x1d.icicle.v1.BuildCompatibilityR\x05build\x12(\n" +
+	"\x10server_time_unix\x18\x10 \x01(\x03R\x0eserverTimeUnix\"\xd2\x01\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10SERVER_CHALLENGE\x10\x01\x12\x11\n" +

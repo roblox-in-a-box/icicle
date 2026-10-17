@@ -93,7 +93,7 @@ func TestTLSWebSocket(t *testing.T) {
 		t.Fatal(err)
 	}
 	message := new(wire.Envelope)
-	if proto.Unmarshal(data, message) != nil || message.Kind != wire.Envelope_SERVER_CHALLENGE || len(message.Challenge) != 32 {
+	if proto.Unmarshal(data, message) != nil || message.Kind != wire.Envelope_SERVER_CHALLENGE || len(message.Challenge) != 32 || message.ServerTimeUnix <= 0 || message.ServerTimeUnix > time.Now().Unix() {
 		t.Fatal("invalid TLS handshake")
 	}
 }
@@ -235,7 +235,7 @@ func TestAdmissionValidation(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			_, url := setup(t, Config{})
 			h := host(t, url, "ABCD1234")
-			_, r := join(t, url, "ABCD1234", "request", h)
+			c, r := join(t, url, "ABCD1234", "request", h)
 			m := answer(h, r)
 			a := new(wire.HostAnswer)
 			proto.Unmarshal(m.Payload, a)
@@ -274,7 +274,13 @@ func TestAdmissionValidation(t *testing.T) {
 				m.Signature = h.sign("icicle/answer/v1\n", m.Payload)
 			}
 			h.send(t, m)
-			h.read(t, wire.Envelope_ERROR)
+			refusal := h.read(t, wire.Envelope_REJECTED)
+			if refusal.Error == "" || c.read(t, wire.Envelope_REJECTED).Error != refusal.Error {
+				t.Fatal("missing or inconsistent refusal reason")
+			}
+			next, request := join(t, url, "ABCD1234", "next", h)
+			h.send(t, answer(h, request))
+			next.read(t, wire.Envelope_ADMITTED)
 		})
 	}
 }
@@ -287,7 +293,7 @@ func TestSessionIsolation(t *testing.T) {
 	forged := answer(other, r)
 	forged.SessionId = "EFGH5678"
 	other.send(t, forged)
-	other.read(t, wire.Envelope_ERROR)
+	other.read(t, wire.Envelope_REJECTED)
 	h.send(t, answer(h, r))
 	c.read(t, wire.Envelope_ADMITTED)
 	c.send(t, &wire.Envelope{Kind: wire.Envelope_CANDIDATE, SessionId: "EFGH5678", Candidate: "test"})
@@ -311,6 +317,14 @@ func TestTimeoutsAndShutdown(t *testing.T) {
 	if _, _, err := c.conn.ReadMessage(); err == nil {
 		t.Fatal("pending client stayed open")
 	}
+	h.send(t, answer(h, r))
+	if refusal := h.read(t, wire.Envelope_REJECTED); refusal.PeerId != r.PeerId {
+		t.Fatal("late answer rejected the wrong peer")
+	}
+	next, request := join(t, url, "ABCD1234", "next", h)
+	h.send(t, answer(h, request))
+	next.read(t, wire.Envelope_ADMITTED)
+	h.read(t, wire.Envelope_ADMITTED)
 	b.Close()
 	h.conn.SetReadDeadline(time.Now().Add(time.Second))
 	if _, _, err := h.conn.ReadMessage(); err == nil {

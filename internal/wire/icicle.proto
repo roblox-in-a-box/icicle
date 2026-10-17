@@ -33,6 +33,7 @@ message Envelope {
   string error = 13;
   AuthorityPolicy authority = 14;
   BuildCompatibility build = 15;
+  int64 server_time_unix = 16;
 }
 
 message AuthorityPolicy {

@@ -41,7 +41,7 @@ func TestTLSReverseProxy(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		p := &testPeer{conn: conn, key: key, build: &wire.BuildCompatibility{ProtocolVersion: 35, BuildVersion: "test", Revision: "test-revision"}}
+		p := &testPeer{conn: conn, key: key, build: &wire.BuildCompatibility{ProtocolVersion: 36, BuildVersion: "test", Revision: "test-revision"}}
 		challenge := p.read(t, wire.Envelope_SERVER_CHALLENGE)
 		p.challenge = challenge.Challenge
 		p.authority = challenge.Authority.TicketPublicKeys[0]

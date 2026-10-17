@@ -2,6 +2,7 @@ package broker
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"time"
 
@@ -63,19 +64,30 @@ func (b *Broker) handle(p *peer, m *wire.Envelope) error {
 	}
 	c := s.clients[m.PeerId]
 	if c == nil || m.RequestId != c.request.RequestId {
+		if (m.Kind == wire.Envelope_ADMITTED || m.Kind == wire.Envelope_REJECTED) && tokenPattern.MatchString(m.PeerId) && tokenPattern.MatchString(m.RequestId) {
+			p.logf("stale_admission", "lobby=%q peer=%q request=%q reason=%q", s.id, m.PeerId, m.RequestId, "peer or request no longer active")
+			p.send(&wire.Envelope{Kind: wire.Envelope_REJECTED, SessionId: s.id, PeerId: m.PeerId, RequestId: m.RequestId, Error: "Join request is no longer active"}, false)
+			return nil
+		}
 		return errors.New("unknown peer or request")
 	}
 	switch m.Kind {
 	case wire.Envelope_ADMITTED:
-		if c.admitted || now.After(c.deadline) {
-			return errors.New("admission expired or repeated")
+		if c.admitted {
+			return errors.New("admission repeated")
+		}
+		if now.After(c.deadline) {
+			b.rejectAdmission(s, c, fmt.Sprintf("admission expired by %dms", now.Sub(c.deadline).Milliseconds()))
+			return nil
 		}
 		if err := validateAnswer(s, c, m, now); err != nil {
-			return err
+			b.rejectAdmission(s, c, err.Error())
+			return nil
 		}
 		issued, err := b.issueAdmission(s, c, m, now)
 		if err != nil {
-			return err
+			b.rejectAdmission(s, c, "could not issue ticket: "+err.Error())
+			return nil
 		}
 		c.admitted = true
 		s.host.send(issued, false)
@@ -84,6 +96,7 @@ func (b *Broker) handle(p *peer, m *wire.Envelope) error {
 		if c.admitted {
 			return errors.New("peer already admitted")
 		}
+		p.logf("host_refused_client", "lobby=%q peer=%q request=%q client_connection=%d reason=%q", s.id, c.id, c.request.RequestId, c.connectionID, logValue(m.Error))
 		delete(s.clients, c.id)
 		c.send(&wire.Envelope{Kind: wire.Envelope_REJECTED, SessionId: s.id, PeerId: c.id, RequestId: c.request.RequestId, Error: "Admission failed"}, true)
 	case wire.Envelope_DESCRIPTION, wire.Envelope_CANDIDATE:
@@ -95,6 +108,14 @@ func (b *Broker) handle(p *peer, m *wire.Envelope) error {
 		return errors.New("unauthorized host message")
 	}
 	return nil
+}
+
+func (b *Broker) rejectAdmission(s *session, c *peer, reason string) {
+	s.host.logf("admission_refused", "lobby=%q peer=%q request=%q client_connection=%d reason=%q", s.id, c.id, c.request.RequestId, c.connectionID, reason)
+	delete(s.clients, c.id)
+	refusal := &wire.Envelope{Kind: wire.Envelope_REJECTED, SessionId: s.id, PeerId: c.id, RequestId: c.request.RequestId, Error: reason}
+	s.host.send(refusal, false)
+	c.send(refusal, true)
 }
 
 func validRelay(m *wire.Envelope) bool {

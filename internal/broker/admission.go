@@ -89,6 +89,7 @@ func (b *Broker) issueAdmission(s *session, c *peer, proposal *wire.Envelope, no
 		return nil, err
 	}
 	ticket.ExpiresUnix = now.Unix() + 30
+	s.host.logf("ticket_issued", "lobby=%q peer=%q request=%q username=%q user_id=%d client_connection=%d host_protocol=%d client_protocol=%d broker_unix=%d expiry_unix=%d", s.id, c.id, c.request.RequestId, ticket.Username, ticket.UserId, c.connectionID, ticket.HostBuild.ProtocolVersion, ticket.ClientBuild.ProtocolVersion, now.Unix(), ticket.ExpiresUnix)
 	payload, err := proto.Marshal(ticket)
 	if err != nil {
 		return nil, err

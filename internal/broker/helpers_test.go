@@ -56,7 +56,7 @@ func connect(t *testing.T, url string) *testPeer {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := &testPeer{conn: c, key: key, build: &wire.BuildCompatibility{ProtocolVersion: 35, BuildVersion: "test", Revision: "test-revision"}}
+	p := &testPeer{conn: c, key: key, build: &wire.BuildCompatibility{ProtocolVersion: 36, BuildVersion: "test", Revision: "test-revision"}}
 	m := p.read(t, wire.Envelope_SERVER_CHALLENGE)
 	if len(m.Challenge) != 32 {
 		t.Fatal("challenge must be 32 bytes")
