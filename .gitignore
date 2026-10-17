@@ -3,3 +3,4 @@
 *.pem
 *.key
 coverage.out
+config.json
