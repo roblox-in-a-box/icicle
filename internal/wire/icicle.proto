@@ -31,6 +31,26 @@ message Envelope {
   bytes public_key = 11;
   bytes challenge = 12;
   string error = 13;
+  AuthorityPolicy authority = 14;
+  BuildCompatibility build = 15;
+}
+
+message AuthorityPolicy {
+  repeated bytes ticket_public_keys = 1;
+  repeated bytes admin_public_keys = 2;
+}
+
+message BuildCompatibility {
+  uint32 protocol_version = 1;
+  string build_version = 2;
+  string revision = 3;
+}
+
+message HostRegistration {
+  uint32 version = 1;
+  string session_id = 2;
+  bytes challenge = 3;
+  BuildCompatibility build = 4;
 }
 
 message JoinRequest {
@@ -40,6 +60,8 @@ message JoinRequest {
   bytes client_public_key = 4;
   string offer = 5;
   bytes challenge = 6;
+  string username = 7;
+  BuildCompatibility build = 8;
 }
 
 message ClientTicket {
@@ -52,6 +74,10 @@ message ClientTicket {
   bytes offer_sha256 = 7;
   int64 expires_unix = 8;
   bytes ticket_id = 9;
+  string username = 10;
+  int32 user_id = 11;
+  BuildCompatibility host_build = 12;
+  BuildCompatibility client_build = 13;
 }
 
 message HostAnswer {

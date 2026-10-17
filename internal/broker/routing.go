@@ -8,6 +8,8 @@ import (
 	"icicle/internal/wire"
 )
 
+var usernamePattern = regexp.MustCompile(`^[A-Za-z0-9_]{1,32}$`)
+
 var lobbyPattern = regexp.MustCompile(`^[A-Z0-9]{8}$`)
 var tokenPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
@@ -71,8 +73,13 @@ func (b *Broker) handle(p *peer, m *wire.Envelope) error {
 		if err := validateAnswer(s, c, m, now); err != nil {
 			return err
 		}
+		issued, err := b.issueAdmission(s, c, m, now)
+		if err != nil {
+			return err
+		}
 		c.admitted = true
-		c.send(m, false)
+		s.host.send(issued, false)
+		c.send(issued, false)
 	case wire.Envelope_REJECTED:
 		if c.admitted {
 			return errors.New("peer already admitted")

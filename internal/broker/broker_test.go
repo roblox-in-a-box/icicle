@@ -2,6 +2,7 @@ package broker
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -39,8 +40,16 @@ func TestSignedPayloadBytesArePreserved(t *testing.T) {
 	a.Signature = h.sign("icicle/answer/v1\n", a.Payload)
 	h.send(t, a)
 	admitted := c.read(t, wire.Envelope_ADMITTED)
-	if !bytes.Equal(admitted.Payload, a.Payload) || !bytes.Equal(admitted.Signature, a.Signature) {
-		t.Fatal("signed host answer was changed")
+	issued := verifyIssued(t, c, admitted)
+	if !bytes.Equal(issued.ClientPublicKey, c.key.Public().(ed25519.PublicKey)) {
+		t.Fatal("issued ticket changed client identity")
+	}
+	if bytes.Equal(admitted.Payload, a.Payload) {
+		t.Fatal("broker forwarded the host proposal without issuing its own ticket")
+	}
+	hostIssued := h.read(t, wire.Envelope_ADMITTED)
+	if !bytes.Equal(hostIssued.Payload, admitted.Payload) || !bytes.Equal(hostIssued.Signature, admitted.Signature) {
+		t.Fatal("host and client received different admissions")
 	}
 }
 
@@ -65,7 +74,10 @@ func TestHealthAndRoutes(t *testing.T) {
 }
 
 func TestTLSWebSocket(t *testing.T) {
-	b := New(Config{})
+	b, err := New(Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	s := httptest.NewTLSServer(b)
 	t.Cleanup(func() { b.Close(); s.Close() })
 	transport := s.Client().Transport.(*http.Transport)
@@ -97,8 +109,9 @@ func TestThreeClientsAdmissionAndRouting(t *testing.T) {
 		m := answer(h, r)
 		h.send(t, m)
 		got := c.read(t, wire.Envelope_ADMITTED)
-		if !bytes.Equal(got.Payload, m.Payload) || !bytes.Equal(got.Signature, m.Signature) || got.PeerId != r.PeerId {
-			t.Fatal("admission changed")
+		verifyIssued(t, c, got)
+		if got.PeerId != r.PeerId {
+			t.Fatal("admission peer changed")
 		}
 	}
 	for i, c := range clients {
@@ -179,7 +192,7 @@ func TestJoinFailuresDoNotDisruptHost(t *testing.T) {
 			case "challenge":
 				r.Challenge[0] ^= 1
 			case "version":
-				r.Version = 2
+				r.Version = 1
 			case "oversized":
 				r.Offer = strings.Repeat("x", 48*1024+1)
 			}

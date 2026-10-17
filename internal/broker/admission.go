@@ -1,13 +1,9 @@
-// TODO: per-lobby admission policy e.g whitelisting users by UniqueUserId.
-// ? ^^ operate this & icicle level or rak level?
-
-// TODO: use existing rbx client ticket flow except it verifies the final join ticket is signed by icicle
-// for anyone reading this, yes we have many ideas. many ambitious ones. please ignore my shit code. -b
 package broker
 
 import (
 	"bytes"
 	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
 	"time"
@@ -54,7 +50,7 @@ func validateAnswer(s *session, c *peer, m *wire.Envelope, now time.Time) error 
 		valid  bool
 		reason string
 	}{
-		{ticket.Version == 1, "unsupported ticket version"},
+		{ticket.Version == 2, "unsupported ticket version"},
 		{ticket.SessionId == s.id, "ticket lobby mismatch"},
 		{ticket.PeerId == c.id, "ticket peer mismatch"},
 		{ticket.RequestId == c.request.RequestId, "ticket request mismatch"},
@@ -62,6 +58,10 @@ func validateAnswer(s *session, c *peer, m *wire.Envelope, now time.Time) error 
 		{bytes.Equal(ticket.HostPublicKey, s.host.key), "ticket host key mismatch"},
 		{bytes.Equal(ticket.OfferSha256, digest[:]), "ticket offer digest mismatch"},
 		{len(ticket.TicketId) == 32, "invalid ticket ID size"},
+		{ticket.Username == c.request.Username, "ticket username mismatch"},
+		{ticket.UserId > 0, "invalid local UserId"},
+		{proto.Equal(ticket.HostBuild, s.host.build), "ticket host build mismatch"},
+		{proto.Equal(ticket.ClientBuild, c.request.Build), "ticket client build mismatch"},
 	}
 	for _, check := range checks {
 		if !check.valid {
@@ -73,4 +73,33 @@ func validateAnswer(s *session, c *peer, m *wire.Envelope, now time.Time) error 
 	}
 
 	return nil
+}
+
+func (b *Broker) issueAdmission(s *session, c *peer, proposal *wire.Envelope, now time.Time) (*wire.Envelope, error) {
+	answer := new(wire.HostAnswer)
+	if err := proto.Unmarshal(proposal.Payload, answer); err != nil {
+		return nil, err
+	}
+	ticket := new(wire.ClientTicket)
+	if err := proto.Unmarshal(answer.TicketPayload, ticket); err != nil {
+		return nil, err
+	}
+	ticket.TicketId = make([]byte, 32)
+	if _, err := rand.Read(ticket.TicketId); err != nil {
+		return nil, err
+	}
+	ticket.ExpiresUnix = now.Unix() + 30
+	payload, err := proto.Marshal(ticket)
+	if err != nil {
+		return nil, err
+	}
+	answer.TicketPayload = payload
+	answer.TicketSignature = ed25519.Sign(b.config.SigningKey, append([]byte("icicle/ticket/v1\n"), payload...))
+	payload, err = proto.Marshal(answer)
+	if err != nil {
+		return nil, err
+	}
+	return &wire.Envelope{Kind: wire.Envelope_ADMITTED, SessionId: s.id, PeerId: c.id,
+		RequestId: c.request.RequestId, Payload: payload,
+		Signature: ed25519.Sign(b.config.SigningKey, append([]byte("icicle/admission/v2\n"), payload...))}, nil
 }

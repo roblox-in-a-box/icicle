@@ -41,11 +41,14 @@ func TestTLSReverseProxy(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		p := &testPeer{conn: conn, key: key}
-		p.challenge = p.read(t, wire.Envelope_SERVER_CHALLENGE).Challenge
+		p := &testPeer{conn: conn, key: key, build: &wire.BuildCompatibility{ProtocolVersion: 35, BuildVersion: "test", Revision: "test-revision"}}
+		challenge := p.read(t, wire.Envelope_SERVER_CHALLENGE)
+		p.challenge = challenge.Challenge
+		p.authority = challenge.Authority.TicketPublicKeys[0]
 		return p
 	}
 	h := makePeer(nil)
+	h.hosting = true
 	h.send(t, h.hostMessage("ABCD1234"))
 	h.read(t, wire.Envelope_REGISTERED)
 	c := makePeer(http.Header{"Origin": {edge.URL}})

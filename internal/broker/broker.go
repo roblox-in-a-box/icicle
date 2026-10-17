@@ -1,6 +1,9 @@
 package broker
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
+	"errors"
 	"sync"
 	"time"
 
@@ -24,7 +27,30 @@ type Broker struct {
 	wg          sync.WaitGroup
 }
 
-func New(config Config) *Broker {
+func New(config Config) (*Broker, error) {
+	if len(config.SigningKey) == 0 {
+		_, key, err := ed25519.GenerateKey(rand.Reader)
+		if err != nil {
+			return nil, err
+		}
+		config.SigningKey = key
+	}
+	if len(config.SigningKey) != ed25519.PrivateKeySize {
+		return nil, errors.New("invalid authority key")
+	}
+	config.SigningKey = append(ed25519.PrivateKey(nil), config.SigningKey...)
+	if len(config.AdminKeys) > 256 {
+		return nil, errors.New("too many admin keys")
+	}
+	admins := make([]ed25519.PublicKey, 0, len(config.AdminKeys))
+	for _, key := range config.AdminKeys {
+		if len(key) != ed25519.PublicKeySize {
+			return nil, errors.New("invalid admin key")
+		}
+		admins = append(admins, append(ed25519.PublicKey(nil), key...))
+	}
+	config.AdminKeys = admins
+
 	if config.RegistrationTimeout <= 0 {
 		config.RegistrationTimeout = 35 * time.Second
 	}
@@ -39,7 +65,7 @@ func New(config Config) *Broker {
 	}
 	b.wg.Add(1)
 	go b.expire()
-	return b
+	return b, nil
 }
 
 func (b *Broker) remove(p *peer) {

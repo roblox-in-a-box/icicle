@@ -78,7 +78,7 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 	go p.writeLoop()
 	defer func() { p.close(); <-p.writerDone }()
-	p.send(&wire.Envelope{Kind: wire.Envelope_SERVER_CHALLENGE, Challenge: p.challenge}, false)
+	p.send(&wire.Envelope{Kind: wire.Envelope_SERVER_CHALLENGE, Challenge: p.challenge, Authority: b.authorityPolicy()}, false)
 	for {
 		kind, data, err := conn.ReadMessage()
 		if err != nil {

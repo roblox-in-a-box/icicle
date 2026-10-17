@@ -1,4 +1,3 @@
-// TODO: UniqueUserId.
 package broker
 
 import (
@@ -25,6 +24,7 @@ type peer struct {
 	once        sync.Once
 	challenge   []byte
 	key         []byte
+	build       *wire.BuildCompatibility
 	session     *session
 	id          string
 	request     *wire.JoinRequest
