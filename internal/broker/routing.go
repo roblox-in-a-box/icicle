@@ -12,7 +12,7 @@ import (
 	"icicle/internal/wire"
 )
 
-var usernamePattern = regexp.MustCompile(`^[A-Za-z0-9_]{1,32}$`)
+var usernamePattern = regexp.MustCompile(`^[A-Za-z0-9_]([A-Za-z0-9_ ]{0,30}[A-Za-z0-9_])?$`)
 
 var lobbyPattern = regexp.MustCompile(`^[A-Z0-9]{8}$`)
 var tokenPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
