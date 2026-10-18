@@ -3,6 +3,7 @@ package broker
 import (
 	"crypto/rand"
 	"errors"
+	"net"
 	"net/http"
 	"time"
 
@@ -41,17 +42,36 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	source, err := clientIP(r, b.config.TrustLoopbackProxy)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	b.mu.Lock()
 	if b.closed {
 		b.mu.Unlock()
 		http.Error(w, "server shutting down", http.StatusServiceUnavailable)
 		return
 	}
+	count := 0
+	for p := range b.connections {
+		if p.sourceIP == source {
+			count++
+		}
+	}
+	ip := net.ParseIP(source)
+	if len(b.connections) >= 1024 || (count >= 64 && (ip == nil || !ip.IsLoopback())) {
+		b.mu.Unlock()
+		http.Error(w, "connection capacity reached", http.StatusTooManyRequests)
+		return
+	}
 	b.nextConnectionID++
 	p := &peer{
 		connectionID: b.nextConnectionID,
 		remote:       r.RemoteAddr,
+		sourceIP:     source,
 		out:          make(chan outbound, 8),
+		datagrams:    make(chan []byte, 128),
 		done:         make(chan struct{}),
 		writerDone:   make(chan struct{}),
 		deadline:     time.Now().Add(b.config.RegistrationTimeout),
@@ -109,7 +129,13 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if kind != websocket.BinaryMessage || (proto.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(data, message) != nil {
 			err = errors.New("invalid binary protobuf frame")
 		} else {
-			p.logf("message_received", "kind=%s lobby=%q peer=%q request=%q bytes=%d", message.Kind, logValue(message.SessionId), logValue(message.PeerId), logValue(message.RequestId), len(data))
+			if message.Kind == wire.Envelope_RELAY_DATA && len(data) > 2048 {
+				p.send(&wire.Envelope{Kind: wire.Envelope_ERROR, Error: "relay frame too large"}, true)
+				return
+			}
+			if message.Kind != wire.Envelope_RELAY_DATA {
+				p.logf("message_received", "kind=%s lobby=%q peer=%q request=%q bytes=%d", message.Kind, logValue(message.SessionId), logValue(message.PeerId), logValue(message.RequestId), len(data))
+			}
 			err = b.handle(p, message)
 		}
 		if err != nil {

@@ -36,6 +36,16 @@ const (
 	Envelope_CANDIDATE        Envelope_Kind = 9
 	Envelope_PEER_LEFT        Envelope_Kind = 10
 	Envelope_ERROR            Envelope_Kind = 11
+	Envelope_PREPARE_CLIENT   Envelope_Kind = 12
+	Envelope_PREPARE_JOIN     Envelope_Kind = 13
+	Envelope_PREPARE_ACCEPT   Envelope_Kind = 14
+	Envelope_PREPARED         Envelope_Kind = 15
+	Envelope_OFFER_READY      Envelope_Kind = 16
+	Envelope_ROUTE_STATUS     Envelope_Kind = 17
+	Envelope_REVOKE_PEER      Envelope_Kind = 18
+	Envelope_RELAY_REQUEST    Envelope_Kind = 19
+	Envelope_RELAY_READY      Envelope_Kind = 20
+	Envelope_RELAY_DATA       Envelope_Kind = 21
 )
 
 // Enum value maps for Envelope_Kind.
@@ -53,6 +63,16 @@ var (
 		9:  "CANDIDATE",
 		10: "PEER_LEFT",
 		11: "ERROR",
+		12: "PREPARE_CLIENT",
+		13: "PREPARE_JOIN",
+		14: "PREPARE_ACCEPT",
+		15: "PREPARED",
+		16: "OFFER_READY",
+		17: "ROUTE_STATUS",
+		18: "REVOKE_PEER",
+		19: "RELAY_REQUEST",
+		20: "RELAY_READY",
+		21: "RELAY_DATA",
 	}
 	Envelope_Kind_value = map[string]int32{
 		"KIND_UNSPECIFIED": 0,
@@ -67,6 +87,16 @@ var (
 		"CANDIDATE":        9,
 		"PEER_LEFT":        10,
 		"ERROR":            11,
+		"PREPARE_CLIENT":   12,
+		"PREPARE_JOIN":     13,
+		"PREPARE_ACCEPT":   14,
+		"PREPARED":         15,
+		"OFFER_READY":      16,
+		"ROUTE_STATUS":     17,
+		"REVOKE_PEER":      18,
+		"RELAY_REQUEST":    19,
+		"RELAY_READY":      20,
+		"RELAY_DATA":       21,
 	}
 )
 
@@ -115,6 +145,9 @@ type Envelope struct {
 	Authority       *AuthorityPolicy       `protobuf:"bytes,14,opt,name=authority,proto3" json:"authority,omitempty"`
 	Build           *BuildCompatibility    `protobuf:"bytes,15,opt,name=build,proto3" json:"build,omitempty"`
 	ServerTimeUnix  int64                  `protobuf:"varint,16,opt,name=server_time_unix,json=serverTimeUnix,proto3" json:"server_time_unix,omitempty"`
+	Relay           *RelayCredentials      `protobuf:"bytes,17,opt,name=relay,proto3" json:"relay,omitempty"`
+	PreferRelay     bool                   `protobuf:"varint,18,opt,name=prefer_relay,json=preferRelay,proto3" json:"prefer_relay,omitempty"`
+	PreferWebsocket bool                   `protobuf:"varint,19,opt,name=prefer_websocket,json=preferWebsocket,proto3" json:"prefer_websocket,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -261,6 +294,87 @@ func (x *Envelope) GetServerTimeUnix() int64 {
 	return 0
 }
 
+func (x *Envelope) GetRelay() *RelayCredentials {
+	if x != nil {
+		return x.Relay
+	}
+	return nil
+}
+
+func (x *Envelope) GetPreferRelay() bool {
+	if x != nil {
+		return x.PreferRelay
+	}
+	return false
+}
+
+func (x *Envelope) GetPreferWebsocket() bool {
+	if x != nil {
+		return x.PreferWebsocket
+	}
+	return false
+}
+
+type RelayCredentials struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Urls          []string               `protobuf:"bytes,1,rep,name=urls,proto3" json:"urls,omitempty"`
+	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	Password      string                 `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RelayCredentials) Reset() {
+	*x = RelayCredentials{}
+	mi := &file_icicle_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RelayCredentials) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RelayCredentials) ProtoMessage() {}
+
+func (x *RelayCredentials) ProtoReflect() protoreflect.Message {
+	mi := &file_icicle_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RelayCredentials.ProtoReflect.Descriptor instead.
+func (*RelayCredentials) Descriptor() ([]byte, []int) {
+	return file_icicle_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *RelayCredentials) GetUrls() []string {
+	if x != nil {
+		return x.Urls
+	}
+	return nil
+}
+
+func (x *RelayCredentials) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *RelayCredentials) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
 type AuthorityPolicy struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	TicketPublicKeys [][]byte               `protobuf:"bytes,1,rep,name=ticket_public_keys,json=ticketPublicKeys,proto3" json:"ticket_public_keys,omitempty"`
@@ -271,7 +385,7 @@ type AuthorityPolicy struct {
 
 func (x *AuthorityPolicy) Reset() {
 	*x = AuthorityPolicy{}
-	mi := &file_icicle_proto_msgTypes[1]
+	mi := &file_icicle_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -283,7 +397,7 @@ func (x *AuthorityPolicy) String() string {
 func (*AuthorityPolicy) ProtoMessage() {}
 
 func (x *AuthorityPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_icicle_proto_msgTypes[1]
+	mi := &file_icicle_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -296,7 +410,7 @@ func (x *AuthorityPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthorityPolicy.ProtoReflect.Descriptor instead.
 func (*AuthorityPolicy) Descriptor() ([]byte, []int) {
-	return file_icicle_proto_rawDescGZIP(), []int{1}
+	return file_icicle_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *AuthorityPolicy) GetTicketPublicKeys() [][]byte {
@@ -324,7 +438,7 @@ type BuildCompatibility struct {
 
 func (x *BuildCompatibility) Reset() {
 	*x = BuildCompatibility{}
-	mi := &file_icicle_proto_msgTypes[2]
+	mi := &file_icicle_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -336,7 +450,7 @@ func (x *BuildCompatibility) String() string {
 func (*BuildCompatibility) ProtoMessage() {}
 
 func (x *BuildCompatibility) ProtoReflect() protoreflect.Message {
-	mi := &file_icicle_proto_msgTypes[2]
+	mi := &file_icicle_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -349,7 +463,7 @@ func (x *BuildCompatibility) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BuildCompatibility.ProtoReflect.Descriptor instead.
 func (*BuildCompatibility) Descriptor() ([]byte, []int) {
-	return file_icicle_proto_rawDescGZIP(), []int{2}
+	return file_icicle_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *BuildCompatibility) GetProtocolVersion() uint32 {
@@ -385,7 +499,7 @@ type HostRegistration struct {
 
 func (x *HostRegistration) Reset() {
 	*x = HostRegistration{}
-	mi := &file_icicle_proto_msgTypes[3]
+	mi := &file_icicle_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -397,7 +511,7 @@ func (x *HostRegistration) String() string {
 func (*HostRegistration) ProtoMessage() {}
 
 func (x *HostRegistration) ProtoReflect() protoreflect.Message {
-	mi := &file_icicle_proto_msgTypes[3]
+	mi := &file_icicle_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -410,7 +524,7 @@ func (x *HostRegistration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HostRegistration.ProtoReflect.Descriptor instead.
 func (*HostRegistration) Descriptor() ([]byte, []int) {
-	return file_icicle_proto_rawDescGZIP(), []int{3}
+	return file_icicle_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *HostRegistration) GetVersion() uint32 {
@@ -457,7 +571,7 @@ type JoinRequest struct {
 
 func (x *JoinRequest) Reset() {
 	*x = JoinRequest{}
-	mi := &file_icicle_proto_msgTypes[4]
+	mi := &file_icicle_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -469,7 +583,7 @@ func (x *JoinRequest) String() string {
 func (*JoinRequest) ProtoMessage() {}
 
 func (x *JoinRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_icicle_proto_msgTypes[4]
+	mi := &file_icicle_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -482,7 +596,7 @@ func (x *JoinRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JoinRequest.ProtoReflect.Descriptor instead.
 func (*JoinRequest) Descriptor() ([]byte, []int) {
-	return file_icicle_proto_rawDescGZIP(), []int{4}
+	return file_icicle_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *JoinRequest) GetVersion() uint32 {
@@ -562,7 +676,7 @@ type ClientTicket struct {
 
 func (x *ClientTicket) Reset() {
 	*x = ClientTicket{}
-	mi := &file_icicle_proto_msgTypes[5]
+	mi := &file_icicle_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -574,7 +688,7 @@ func (x *ClientTicket) String() string {
 func (*ClientTicket) ProtoMessage() {}
 
 func (x *ClientTicket) ProtoReflect() protoreflect.Message {
-	mi := &file_icicle_proto_msgTypes[5]
+	mi := &file_icicle_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -587,7 +701,7 @@ func (x *ClientTicket) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientTicket.ProtoReflect.Descriptor instead.
 func (*ClientTicket) Descriptor() ([]byte, []int) {
-	return file_icicle_proto_rawDescGZIP(), []int{5}
+	return file_icicle_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ClientTicket) GetVersion() uint32 {
@@ -692,7 +806,7 @@ type HostAnswer struct {
 
 func (x *HostAnswer) Reset() {
 	*x = HostAnswer{}
-	mi := &file_icicle_proto_msgTypes[6]
+	mi := &file_icicle_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -704,7 +818,7 @@ func (x *HostAnswer) String() string {
 func (*HostAnswer) ProtoMessage() {}
 
 func (x *HostAnswer) ProtoReflect() protoreflect.Message {
-	mi := &file_icicle_proto_msgTypes[6]
+	mi := &file_icicle_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -717,7 +831,7 @@ func (x *HostAnswer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HostAnswer.ProtoReflect.Descriptor instead.
 func (*HostAnswer) Descriptor() ([]byte, []int) {
-	return file_icicle_proto_rawDescGZIP(), []int{6}
+	return file_icicle_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *HostAnswer) GetTicketPayload() []byte {
@@ -745,7 +859,7 @@ var File_icicle_proto protoreflect.FileDescriptor
 
 const file_icicle_proto_rawDesc = "" +
 	"\n" +
-	"\ficicle.proto\x12\ticicle.v1\"\x85\x06\n" +
+	"\ficicle.proto\x12\ticicle.v1\"\xb6\b\n" +
 	"\bEnvelope\x12,\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x18.icicle.v1.Envelope.KindR\x04kind\x12\x1d\n" +
 	"\n" +
@@ -766,7 +880,10 @@ const file_icicle_proto_rawDesc = "" +
 	"\x05error\x18\r \x01(\tR\x05error\x128\n" +
 	"\tauthority\x18\x0e \x01(\v2\x1a.icicle.v1.AuthorityPolicyR\tauthority\x123\n" +
 	"\x05build\x18\x0f \x01(\v2\x1d.icicle.v1.BuildCompatibilityR\x05build\x12(\n" +
-	"\x10server_time_unix\x18\x10 \x01(\x03R\x0eserverTimeUnix\"\xd2\x01\n" +
+	"\x10server_time_unix\x18\x10 \x01(\x03R\x0eserverTimeUnix\x121\n" +
+	"\x05relay\x18\x11 \x01(\v2\x1b.icicle.v1.RelayCredentialsR\x05relay\x12!\n" +
+	"\fprefer_relay\x18\x12 \x01(\bR\vpreferRelay\x12)\n" +
+	"\x10prefer_websocket\x18\x13 \x01(\bR\x0fpreferWebsocket\"\x82\x03\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10SERVER_CHALLENGE\x10\x01\x12\x11\n" +
@@ -781,7 +898,22 @@ const file_icicle_proto_rawDesc = "" +
 	"\tCANDIDATE\x10\t\x12\r\n" +
 	"\tPEER_LEFT\x10\n" +
 	"\x12\t\n" +
-	"\x05ERROR\x10\v\"k\n" +
+	"\x05ERROR\x10\v\x12\x12\n" +
+	"\x0ePREPARE_CLIENT\x10\f\x12\x10\n" +
+	"\fPREPARE_JOIN\x10\r\x12\x12\n" +
+	"\x0ePREPARE_ACCEPT\x10\x0e\x12\f\n" +
+	"\bPREPARED\x10\x0f\x12\x0f\n" +
+	"\vOFFER_READY\x10\x10\x12\x10\n" +
+	"\fROUTE_STATUS\x10\x11\x12\x0f\n" +
+	"\vREVOKE_PEER\x10\x12\x12\x11\n" +
+	"\rRELAY_REQUEST\x10\x13\x12\x0f\n" +
+	"\vRELAY_READY\x10\x14\x12\x0e\n" +
+	"\n" +
+	"RELAY_DATA\x10\x15\"^\n" +
+	"\x10RelayCredentials\x12\x12\n" +
+	"\x04urls\x18\x01 \x03(\tR\x04urls\x12\x1a\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12\x1a\n" +
+	"\bpassword\x18\x03 \x01(\tR\bpassword\"k\n" +
 	"\x0fAuthorityPolicy\x12,\n" +
 	"\x12ticket_public_keys\x18\x01 \x03(\fR\x10ticketPublicKeys\x12*\n" +
 	"\x11admin_public_keys\x18\x02 \x03(\fR\x0fadminPublicKeys\"\x80\x01\n" +
@@ -843,30 +975,32 @@ func file_icicle_proto_rawDescGZIP() []byte {
 }
 
 var file_icicle_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_icicle_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_icicle_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_icicle_proto_goTypes = []any{
 	(Envelope_Kind)(0),         // 0: icicle.v1.Envelope.Kind
 	(*Envelope)(nil),           // 1: icicle.v1.Envelope
-	(*AuthorityPolicy)(nil),    // 2: icicle.v1.AuthorityPolicy
-	(*BuildCompatibility)(nil), // 3: icicle.v1.BuildCompatibility
-	(*HostRegistration)(nil),   // 4: icicle.v1.HostRegistration
-	(*JoinRequest)(nil),        // 5: icicle.v1.JoinRequest
-	(*ClientTicket)(nil),       // 6: icicle.v1.ClientTicket
-	(*HostAnswer)(nil),         // 7: icicle.v1.HostAnswer
+	(*RelayCredentials)(nil),   // 2: icicle.v1.RelayCredentials
+	(*AuthorityPolicy)(nil),    // 3: icicle.v1.AuthorityPolicy
+	(*BuildCompatibility)(nil), // 4: icicle.v1.BuildCompatibility
+	(*HostRegistration)(nil),   // 5: icicle.v1.HostRegistration
+	(*JoinRequest)(nil),        // 6: icicle.v1.JoinRequest
+	(*ClientTicket)(nil),       // 7: icicle.v1.ClientTicket
+	(*HostAnswer)(nil),         // 8: icicle.v1.HostAnswer
 }
 var file_icicle_proto_depIdxs = []int32{
 	0, // 0: icicle.v1.Envelope.kind:type_name -> icicle.v1.Envelope.Kind
-	2, // 1: icicle.v1.Envelope.authority:type_name -> icicle.v1.AuthorityPolicy
-	3, // 2: icicle.v1.Envelope.build:type_name -> icicle.v1.BuildCompatibility
-	3, // 3: icicle.v1.HostRegistration.build:type_name -> icicle.v1.BuildCompatibility
-	3, // 4: icicle.v1.JoinRequest.build:type_name -> icicle.v1.BuildCompatibility
-	3, // 5: icicle.v1.ClientTicket.host_build:type_name -> icicle.v1.BuildCompatibility
-	3, // 6: icicle.v1.ClientTicket.client_build:type_name -> icicle.v1.BuildCompatibility
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	3, // 1: icicle.v1.Envelope.authority:type_name -> icicle.v1.AuthorityPolicy
+	4, // 2: icicle.v1.Envelope.build:type_name -> icicle.v1.BuildCompatibility
+	2, // 3: icicle.v1.Envelope.relay:type_name -> icicle.v1.RelayCredentials
+	4, // 4: icicle.v1.HostRegistration.build:type_name -> icicle.v1.BuildCompatibility
+	4, // 5: icicle.v1.JoinRequest.build:type_name -> icicle.v1.BuildCompatibility
+	4, // 6: icicle.v1.ClientTicket.host_build:type_name -> icicle.v1.BuildCompatibility
+	4, // 7: icicle.v1.ClientTicket.client_build:type_name -> icicle.v1.BuildCompatibility
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_icicle_proto_init() }
@@ -880,7 +1014,7 @@ func file_icicle_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_icicle_proto_rawDesc), len(file_icicle_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

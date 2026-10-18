@@ -17,6 +17,16 @@ message Envelope {
     CANDIDATE = 9;
     PEER_LEFT = 10;
     ERROR = 11;
+    PREPARE_CLIENT = 12;
+    PREPARE_JOIN = 13;
+    PREPARE_ACCEPT = 14;
+    PREPARED = 15;
+    OFFER_READY = 16;
+    ROUTE_STATUS = 17;
+    REVOKE_PEER = 18;
+    RELAY_REQUEST = 19;
+    RELAY_READY = 20;
+    RELAY_DATA = 21;
   }
   Kind kind = 1;
   string session_id = 2;
@@ -34,6 +44,15 @@ message Envelope {
   AuthorityPolicy authority = 14;
   BuildCompatibility build = 15;
   int64 server_time_unix = 16;
+  RelayCredentials relay = 17;
+  bool prefer_relay = 18;
+  bool prefer_websocket = 19;
+}
+
+message RelayCredentials {
+  repeated string urls = 1;
+  string username = 2;
+  string password = 3;
 }
 
 message AuthorityPolicy {

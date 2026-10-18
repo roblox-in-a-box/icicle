@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"icicle/internal/broker"
+	"icicle/internal/relay"
 )
 
 func main() { os.Exit(run()) }
@@ -43,12 +44,21 @@ func run() int {
 		log.Printf("authority_key_failed reason=%q", err)
 		return 1
 	}
-	b, err := broker.New(broker.Config{SigningKey: key, AdminKeys: admins})
+	var turnServer *relay.Server
+	if settings.TURN != nil {
+		turnServer, err = relay.New(*settings.TURN)
+		if err != nil {
+			log.Printf("turn_failed reason=%q", err)
+			return 1
+		}
+		defer turnServer.Close()
+	}
+	b, err := broker.New(broker.Config{SigningKey: key, AdminKeys: admins, Relay: turnServer, TrustLoopbackProxy: settings.TrustLoopbackProxy})
 	if err != nil {
 		log.Printf("broker_failed reason=%q", err)
 		return 1
 	}
-	log.Printf("broker_ready listen=%q config=%q authority_key=%q admins=%d registration_timeout_seconds=35 admission_timeout_seconds=30", *addr, *configPath, *keyPath, len(admins))
+	log.Printf("broker_ready listen=%q config=%q authority_key=%q admins=%d registration_timeout_seconds=35 admission_timeout_seconds=90 turn_udp=%t websocket_relay=true", *addr, *configPath, *keyPath, len(admins), settings.TURN != nil && settings.TURN.UDPListen != "")
 	server := &http.Server{
 		Addr:              *addr,
 		Handler:           b,

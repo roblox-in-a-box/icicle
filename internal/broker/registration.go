@@ -51,6 +51,9 @@ func (b *Broker) registerClient(p *peer, m *wire.Envelope) error {
 	if s == nil {
 		return errors.New("lobby not found")
 	}
+	if len(s.clients) >= 64 {
+		return errors.New("lobby is full")
+	}
 	request, err := validateJoinRequest(p, m)
 	if err != nil {
 		return err
@@ -83,7 +86,11 @@ func (b *Broker) registerClient(p *peer, m *wire.Envelope) error {
 	s.clients[id] = p
 	p.logf("admission_requested", "lobby=%q peer=%q request=%q host_connection=%d timeout_ms=%d", s.id, id, request.RequestId, s.host.connectionID, b.config.AdmissionTimeout.Milliseconds())
 	p.send(&wire.Envelope{Kind: wire.Envelope_REGISTERED, SessionId: s.id, PeerId: id, RequestId: request.RequestId, PublicKey: s.host.key, Build: s.host.build}, false)
-	s.host.send(&wire.Envelope{Kind: wire.Envelope_JOIN_REQUEST, SessionId: s.id, PeerId: id, RequestId: request.RequestId, PublicKey: p.key, Payload: m.Payload, Signature: m.Signature}, false)
+	kind := wire.Envelope_JOIN_REQUEST
+	if m.Kind == wire.Envelope_PREPARE_CLIENT {
+		kind = wire.Envelope_PREPARE_JOIN
+	}
+	s.host.send(&wire.Envelope{Kind: kind, SessionId: s.id, PeerId: id, RequestId: request.RequestId, PublicKey: p.key, Payload: m.Payload, Signature: m.Signature}, false)
 	return nil
 }
 
@@ -101,7 +108,7 @@ func validateJoinRequest(p *peer, m *wire.Envelope) (*wire.JoinRequest, error) {
 		{request.RequestId == m.RequestId && tokenPattern.MatchString(m.RequestId), "invalid join request ID"},
 		{validBuild(request.Build), "invalid client build metadata"},
 		{usernamePattern.MatchString(request.Username), "invalid username"},
-		{len(request.Offer) > 0 && len(request.Offer) <= 48*1024, "invalid offer size"},
+		{(m.Kind == wire.Envelope_PREPARE_CLIENT && request.Offer == "") || (m.Kind != wire.Envelope_PREPARE_CLIENT && len(request.Offer) > 0 && len(request.Offer) <= 48*1024), "invalid offer size"},
 		{bytes.Equal(request.Challenge, p.challenge), "join request challenge mismatch"},
 		{bytes.Equal(request.ClientPublicKey, m.PublicKey), "join request public key mismatch"},
 	}

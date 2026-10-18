@@ -4,10 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+
+	"icicle/internal/relay"
 )
 
 type fileConfig struct {
-	Admins map[string]bool `json:"Admins"`
+	Admins             map[string]bool `json:"Admins"`
+	TURN               *relay.Config   `json:"TURN"`
+	TrustLoopbackProxy bool            `json:"TrustLoopbackProxy"`
 }
 
 func loadConfig(path string, required bool) (fileConfig, error) {

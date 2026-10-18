@@ -7,13 +7,16 @@ import (
 	"sync"
 	"time"
 
+	"icicle/internal/relay"
 	"icicle/internal/wire"
 )
 
 type session struct {
-	id      string
-	host    *peer
-	clients map[string]*peer
+	id              string
+	host            *peer
+	clients         map[string]*peer
+	preferRelay     bool
+	preferWebSocket bool
 }
 
 type Broker struct {
@@ -29,6 +32,13 @@ type Broker struct {
 }
 
 func New(config Config) (*Broker, error) {
+	if config.Relay == nil {
+		var err error
+		config.Relay, err = relay.New(relay.Config{})
+		if err != nil {
+			return nil, err
+		}
+	}
 	if len(config.SigningKey) == 0 {
 		_, key, err := ed25519.GenerateKey(rand.Reader)
 		if err != nil {
@@ -56,7 +66,7 @@ func New(config Config) (*Broker, error) {
 		config.RegistrationTimeout = 35 * time.Second
 	}
 	if config.AdmissionTimeout <= 0 {
-		config.AdmissionTimeout = 30 * time.Second
+		config.AdmissionTimeout = 90 * time.Second
 	}
 	b := &Broker{
 		config:      config,
@@ -74,6 +84,10 @@ func (b *Broker) remove(p *peer) {
 	defer b.mu.Unlock()
 	delete(b.connections, p)
 	s := p.session
+	if p.relayRevoke != nil {
+		p.relayRevoke()
+		p.relayRevoke = nil
+	}
 	if s == nil {
 		return
 	}
@@ -84,6 +98,10 @@ func (b *Broker) remove(p *peer) {
 		p.logf("lobby_closed", "lobby=%q clients=%d reason=%q", s.id, len(s.clients), "host disconnected")
 		delete(b.sessions, s.id)
 		for _, c := range s.clients {
+			if c.relayRevoke != nil {
+				c.relayRevoke()
+				c.relayRevoke = nil
+			}
 			c.send(&wire.Envelope{Kind: wire.Envelope_ERROR, SessionId: s.id, Error: "Host disconnected"}, true)
 		}
 	} else if s.clients[p.id] == p {
@@ -104,6 +122,9 @@ func (b *Broker) expire() {
 		case now := <-ticker.C:
 			b.mu.Lock()
 			for p := range b.connections {
+				if p.relayRenew != nil && p.session != nil && b.sessions[p.session.id] == p.session && p.session.clients[p.id] == p {
+					p.relayRenew()
+				}
 				if p.conn != nil && (p.session == nil || (p != p.session.host && !p.admitted)) && now.After(p.deadline) {
 					phase := "registration"
 					lobby, request := "", ""
