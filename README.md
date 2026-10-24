@@ -20,7 +20,6 @@ Icicle is a high-performance signalling broker and relay service. It establishes
    - [Step 2: Configuration (`config.json`)](#step-2-configuration-configjson)
    - [Step 3: Authority Signing Key](#step-3-authority-signing-key)
    - [Step 4: Systemd Service Setup](#step-4-systemd-service-setup)
-   - [Step 5: Firewall Configuration](#step-5-firewall-configuration)
 3. [Reverse Proxy Configuration](#reverse-proxy-configuration)
    - [Caddy (Same Host)](#caddy-same-host)
    - [Nginx (Same Host)](#nginx-same-host)
@@ -266,35 +265,6 @@ sudo systemctl status icicle
 
 # Follow live logs
 sudo journalctl -u icicle -f
-```
-
-### Step 5: Firewall Configuration
-
-Open the required public ports on your host firewall:
-
-#### Using UFW (Ubuntu / Debian)
-
-```bash
-# Allow HTTP/HTTPS for reverse proxy
-sudo ufw allow 80/tcp comment 'HTTP ACME challenge'
-sudo ufw allow 443/tcp comment 'HTTPS Icicle broker & relay'
-
-# Allow UDP TURN (if enabled in config.json)
-sudo ufw allow 3478/udp comment 'Icicle UDP TURN'
-
-sudo ufw reload
-```
-
-#### Using firewalld (RHEL / Rocky / Fedora)
-
-```bash
-sudo firewall-cmd --permanent --add-service=http
-sudo firewall-cmd --permanent --add-service=https
-
-# Allow UDP TURN (if enabled in config.json)
-sudo firewall-cmd --permanent --add-port=3478/udp
-
-sudo firewall-cmd --reload
 ```
 
 ---
