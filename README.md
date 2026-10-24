@@ -133,7 +133,9 @@ Follow these steps to deploy Icicle as a hardened, unprivileged system service o
 3. Install the binary to `/usr/local/bin`:
 
    ```bash
+   # change /tmp/icicle to the path to your icicle binary
    sudo mv /tmp/icicle /usr/local/bin/icicle
+
    sudo chown root:root /usr/local/bin/icicle
    sudo chmod 755 /usr/local/bin/icicle
    ```
