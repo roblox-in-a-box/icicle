@@ -37,21 +37,36 @@ server {
     listen [::]:443 ssl;
     server_name icicle.example.com;
 
-    ssl_certificate /etc/letsencrypt/live/icicle.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/icicle.example.com/privkey.pem;
+    ssl_certificate     /path/to/fullchain.pem;
+    ssl_certificate_key /path/to/privkey.pem;
 
     location / {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://ICICLE_HOST:8080;
+
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
+
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+
+        proxy_set_header CF-Connecting-IP $remote_addr;
+
+        proxy_set_header Forwarded "";
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
         proxy_set_header X-Icicle-Client-IP $remote_addr;
+
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
+
         proxy_buffering off;
     }
 }
+
 ```
 
 Run Icicle on its default loopback HTTP listener and configure clients to use `wss://icicle.example.com`
@@ -77,33 +92,6 @@ When Nginx, Caddy or another proxy runs on a different machine or container, lis
 Entries are single IPv4 or IPv6 addresses or CIDR ranges such as `10.0.0.0/24`
 Ranges that trust every address are rejected
 Listen on an address the proxy can reach, for example `-listen 0.0.0.0:8080`, and firewall port 8080 so only the proxy can connect
-The proxy must overwrite `X-Icicle-Client-IP` with the connecting client address
-
-### Nginx
-
-```nginx
-location / {
-    proxy_pass http://ICICLE_HOST:8080;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "upgrade";
-    proxy_set_header Host $host;
-    proxy_set_header X-Icicle-Client-IP $remote_addr;
-    proxy_read_timeout 3600s;
-    proxy_send_timeout 3600s;
-    proxy_buffering off;
-}
-```
-
-### Caddy
-
-```caddyfile
-icicle.example.com {
-    reverse_proxy ICICLE_HOST:8080 {
-        header_up X-Icicle-Client-IP {http.request.remote.host}
-    }
-}
-```
 
 Behind Cloudflare's proxy, Nginx must first restore the visitor address with `real_ip_header CF-Connecting-IP` and `set_real_ip_from` for each Cloudflare range so `$remote_addr` is the player rather than Cloudflare
 Without a trusted proxy setting, every player appears to come from the proxy and shares one source allowance
