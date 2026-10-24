@@ -4,3 +4,4 @@
 *.key
 coverage.out
 config.json
+.DS_Store
