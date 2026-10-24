@@ -12,12 +12,14 @@ Icicle is a high-performance signalling broker and relay service. It establishes
 
 1. [Building from Source](#building-from-source)
    - [Prerequisites](#prerequisites)
-   - [Local Build](#local-build)
+   - [Compiling for your current host](#compiling-for-your-current-host)
    - [Cross-Compiling for Linux from Any Host](#cross-compiling-for-linux-from-any-host)
    - [Building with Docker](#building-with-docker)
 2. [Linux Server Installation & Setup](#linux-server-installation--setup)
    - [Step 1: System User and Directory Layout](#step-1-system-user-and-directory-layout)
    - [Step 2: Configuration (`config.json`)](#step-2-configuration-configjson)
+     - [Option A: Reverse Proxy on Same Server (Loopback)](#option-a-reverse-proxy-on-the-same-server-loopback)
+     - [Option B: Reverse Proxy on Separate Server or Container](#option-b-reverse-proxy-on-a-separate-server-or-container)
    - [Step 3: Authority Signing Key](#step-3-authority-signing-key)
    - [Step 4: Systemd Service Setup](#step-4-systemd-service-setup)
 3. [Reverse Proxy Configuration](#reverse-proxy-configuration)
@@ -160,9 +162,15 @@ Create `/etc/icicle/config.json`:
 sudo nano /etc/icicle/config.json
 ```
 
-Populate it according to your deployment model:
+Icicle relies on the reverse proxy to supply the connecting player's real IP address via the `X-Icicle-Client-IP` header. To prevent IP spoofing and properly enforce abuse quotas, choose your deployment topology:
 
-#### Basic Setup (HTTPS WebSocket Fallback only, no UDP TURN)
+#### Option A: Reverse Proxy on the SAME Server (Loopback)
+
+Use this if Caddy or Nginx runs locally on the same host and proxies to `127.0.0.1:8080`.
+- Enable `"TrustLoopbackProxy": true`.
+- Icicle will bind to `127.0.0.1:8080` (safe from external access).
+
+**Basic Setup (WebSocket Fallback only, no UDP TURN):**
 
 ```json
 {
@@ -171,12 +179,47 @@ Populate it according to your deployment model:
 }
 ```
 
-#### Full Setup (with UDP TURN enabled)
+**Full Setup (with UDP TURN enabled):**
 
 ```json
 {
   "Admins": {},
   "TrustLoopbackProxy": true,
+  "TURN": {
+    "PublicIP": "203.0.113.10",
+    "UDPListen": "0.0.0.0:3478",
+    "URLs": ["turn:turn.example.com:3478?transport=udp"],
+    "BytesPerSecond": 524288,
+    "TotalBytesPerSecond": 8388608,
+    "MaxPairs": 128
+  }
+}
+```
+
+#### Option B: Reverse Proxy on a SEPARATE Server or Container
+
+Use this if Caddy, Nginx, or an ingress proxy runs on a separate machine, container, or edge host.
+- Do **not** use `TrustLoopbackProxy`.
+- Add your proxy server's IPv4/IPv6 address or CIDR range to `"TrustedProxies"`. Wildcard CIDRs trusting all addresses are rejected.
+- In Step 4, configure Icicle to bind to an address the proxy can reach (e.g. `-listen 0.0.0.0:8080` or your private LAN IP `-listen 10.0.0.10:8080`), and firewall port `8080` so only the proxy can reach it.
+
+> **Important (Network Security)**: Traffic between the reverse proxy and Icicle travels over plaintext HTTP/WebSocket (`http://` on port 8080 without TLS). You **must** ensure the network between your proxy and the Icicle VM or container is strictly private and trusted (such as a private VPC subnet, internal Docker/Kubernetes network, WireGuard/Tailscale mesh, or isolated VLAN). Never expose port 8080 or pass unencrypted proxy traffic over the public internet.
+
+**Basic Setup (WebSocket Fallback only, no UDP TURN):**
+
+```json
+{
+  "Admins": {},
+  "TrustedProxies": ["10.0.0.5", "172.18.0.0/16"]
+}
+```
+
+**Full Setup (with UDP TURN enabled):**
+
+```json
+{
+  "Admins": {},
+  "TrustedProxies": ["10.0.0.5", "172.18.0.0/16"],
   "TURN": {
     "PublicIP": "203.0.113.10",
     "UDPListen": "0.0.0.0:3478",
@@ -211,7 +254,7 @@ Create `/etc/systemd/system/icicle.service`:
 sudo nano /etc/systemd/system/icicle.service
 ```
 
-Paste the following unit configuration:
+Paste the unit configuration below, adjusting the `-listen` bind address based on your chosen option:
 
 ```ini
 [Unit]
@@ -225,6 +268,9 @@ User=icicle
 Group=icicle
 WorkingDirectory=/var/lib/icicle
 
+# Choose your listen address for -listen:
+# Option A (Proxy on same server):     -listen 127.0.0.1:8080
+# Option B (Proxy on separate server): -listen 0.0.0.0:8080 (or private LAN IP, e.g. 10.0.0.10:8080)
 ExecStart=/usr/local/bin/icicle \
     -config /etc/icicle/config.json \
     -authority-key /var/lib/icicle/icicle-authority.key \
@@ -250,6 +296,10 @@ StateDirectory=icicle
 [Install]
 WantedBy=multi-user.target
 ```
+
+> **Listen Address (`-listen`)**:
+> - **Same Server (Option A)**: Keep `-listen 127.0.0.1:8080` (default) so port 8080 is only accessible over loopback.
+> - **Separate Server / Container (Option B)**: Change to `-listen 0.0.0.0:8080` (or your private LAN IP) so the remote proxy can connect. Ensure your firewall blocks port 8080 from public access. The connection between the proxy and Icicle is unencrypted HTTP, so this network link must remain strictly private and trusted.
 
 Enable and start the service:
 
@@ -369,6 +419,7 @@ When Nginx, Caddy, or an ingress proxy runs on a separate machine or container, 
 
 - Entries can be single IPv4/IPv6 addresses or CIDR blocks (e.g. `10.0.0.0/24`). Wildcards trusting all addresses are rejected.
 - Configure Icicle to bind to a reachable network interface (e.g., `-listen 0.0.0.0:8080`), and firewall port `8080` so only the proxy host can reach it.
+- **Private Network Security**: The connection between the reverse proxy and Icicle is plaintext HTTP/WebSocket on port 8080 without encryption. Ensure the network link between your proxy VM/container and the Icicle VM/container is strictly private (such as a local Docker/Kubernetes bridge network, private VPC subnet, or WireGuard/Tailscale VPN). Never transmit this internal traffic across an untrusted or public network.
 - **Behind Cloudflare**: When proxying through Cloudflare, configure Nginx to restore the real visitor address via `real_ip_header CF-Connecting-IP` and `set_real_ip_from` with Cloudflare's published IP ranges, ensuring `$remote_addr` reflects the player rather than Cloudflare edge servers.
 
 ---
