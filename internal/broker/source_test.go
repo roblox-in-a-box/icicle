@@ -16,18 +16,18 @@ func TestProxySourceCannotBeSpoofedDirectly(t *testing.T) {
 		{"127.0.0.1:1000", "203.0.113.1", "127.0.0.1", false},
 		{"127.0.0.1:1000", "203.0.113.1", "203.0.113.1", true},
 	} {
-		r := httptest.NewRequest("GET", "/ws", nil)
+		r := httptest.NewRequest("GET", "/", nil)
 		r.RemoteAddr = test.remote
 		r.Header.Set("X-Icicle-Client-IP", test.header)
-		got, err := clientIP(r, test.trusted)
+		got, err := clientIP(r, test.trusted, nil)
 		if err != nil || got != test.want {
 			t.Fatalf("client source = %q %v, wanted %q", got, err, test.want)
 		}
 	}
-	r := httptest.NewRequest("GET", "/ws", nil)
+	r := httptest.NewRequest("GET", "/", nil)
 	r.RemoteAddr = "127.0.0.1:1000"
 	r.Header.Set("X-Icicle-Client-IP", "198.51.100.1, 203.0.113.1")
-	if _, err := clientIP(r, true); err == nil {
+	if _, err := clientIP(r, true, nil); err == nil {
 		t.Fatal("ambiguous proxy source was accepted")
 	}
 }

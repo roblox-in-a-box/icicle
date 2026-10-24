@@ -32,7 +32,7 @@ func TestTLSReverseProxy(t *testing.T) {
 		t.Fatal("proxied health probe failed")
 	}
 	makePeer := func(header http.Header) *testPeer {
-		conn, _, err := dialer.Dial("wss"+strings.TrimPrefix(edge.URL, "https")+"/ws", header)
+		conn, _, err := dialer.Dial("wss"+strings.TrimPrefix(edge.URL, "https"), header)
 		if err != nil {
 			t.Fatal(err)
 		}

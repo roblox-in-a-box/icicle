@@ -47,7 +47,7 @@ func setup(t *testing.T, config Config) (*Broker, string) {
 
 func connect(t *testing.T, url string) *testPeer {
 	t.Helper()
-	c, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(url, "http")+"/ws", nil)
+	c, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(url, "http"), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

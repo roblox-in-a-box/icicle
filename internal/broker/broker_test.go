@@ -59,7 +59,7 @@ func TestHealthAndRoutes(t *testing.T) {
 		method, path string
 		status       int
 		body         string
-	}{{"GET", "/healthz", 200, "ok\n"}, {"POST", "/healthz", 405, ""}, {"GET", "/missing", 404, ""}, {"GET", "/ws", 400, ""}} {
+	}{{"GET", "/healthz", 200, "ok\n"}, {"POST", "/healthz", 405, ""}, {"GET", "/missing", 404, ""}, {"GET", "/", 400, ""}, {"GET", "/ws", 404, ""}} {
 		req, _ := http.NewRequest(tc.method, url+tc.path, nil)
 		res, err := http.DefaultClient.Do(req)
 		if err != nil {
@@ -82,7 +82,7 @@ func TestTLSWebSocket(t *testing.T) {
 	t.Cleanup(func() { b.Close(); s.Close() })
 	transport := s.Client().Transport.(*http.Transport)
 	dialer := websocket.Dialer{TLSClientConfig: transport.TLSClientConfig}
-	c, _, err := dialer.Dial("wss"+strings.TrimPrefix(s.URL, "https")+"/ws", nil)
+	c, _, err := dialer.Dial("wss"+strings.TrimPrefix(s.URL, "https"), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

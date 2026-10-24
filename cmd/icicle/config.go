@@ -12,6 +12,7 @@ type fileConfig struct {
 	Admins             map[string]bool `json:"Admins"`
 	TURN               *relay.Config   `json:"TURN"`
 	TrustLoopbackProxy bool            `json:"TrustLoopbackProxy"`
+	TrustedProxies     []string        `json:"TrustedProxies"`
 }
 
 func loadConfig(path string, required bool) (fileConfig, error) {

@@ -39,6 +39,11 @@ func run() int {
 		log.Printf("config_failed reason=%q", err)
 		return 1
 	}
+	proxies, err := broker.ParseTrustedProxies(settings.TrustedProxies)
+	if err != nil {
+		log.Printf("config_failed reason=%q", err)
+		return 1
+	}
 	key, err := broker.LoadAuthority(*keyPath)
 	if err != nil {
 		log.Printf("authority_key_failed reason=%q", err)
@@ -53,12 +58,12 @@ func run() int {
 		}
 		defer turnServer.Close()
 	}
-	b, err := broker.New(broker.Config{SigningKey: key, AdminKeys: admins, Relay: turnServer, TrustLoopbackProxy: settings.TrustLoopbackProxy})
+	b, err := broker.New(broker.Config{SigningKey: key, AdminKeys: admins, Relay: turnServer, TrustLoopbackProxy: settings.TrustLoopbackProxy, TrustedProxies: proxies})
 	if err != nil {
 		log.Printf("broker_failed reason=%q", err)
 		return 1
 	}
-	log.Printf("broker_ready listen=%q config=%q authority_key=%q admins=%d registration_timeout_seconds=35 admission_timeout_seconds=90 turn_udp=%t websocket_relay=true", *addr, *configPath, *keyPath, len(admins), settings.TURN != nil && settings.TURN.UDPListen != "")
+	log.Printf("broker_ready listen=%q config=%q authority_key=%q admins=%d registration_timeout_seconds=35 admission_timeout_seconds=90 turn_udp=%t websocket_relay=true trusted_proxies=%d trust_loopback_proxy=%t", *addr, *configPath, *keyPath, len(admins), settings.TURN != nil && settings.TURN.UDPListen != "", len(proxies), settings.TrustLoopbackProxy)
 	server := &http.Server{
 		Addr:              *addr,
 		Handler:           b,

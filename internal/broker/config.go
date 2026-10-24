@@ -2,6 +2,7 @@ package broker
 
 import (
 	"crypto/ed25519"
+	"net"
 	"time"
 
 	"icicle/internal/relay"
@@ -14,4 +15,5 @@ type Config struct {
 	AdmissionTimeout    time.Duration
 	Relay               *relay.Server
 	TrustLoopbackProxy  bool
+	TrustedProxies      []*net.IPNet
 }

@@ -38,11 +38,11 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok\n"))
 		return
 	}
-	if r.URL.Path != "/ws" {
+	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
-	source, err := clientIP(r, b.config.TrustLoopbackProxy)
+	source, err := clientIP(r, b.config.TrustLoopbackProxy, b.config.TrustedProxies)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
