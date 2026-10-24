@@ -51,7 +51,7 @@ git clone https://github.com/roblox-in-a-box/icicle.git
 cd icicle
 
 # Compile stripped release binary
-go build -ldflags="-s -w" -o icicle ./cmd/icicle
+go build -ldflags="-s -w" -o build/icicle ./cmd/icicle
 ```
 
 ### Cross-Compiling for Linux from Any Host
@@ -61,13 +61,15 @@ You can compile a static Linux binary on macOS or Windows without installing a c
 **Compiling from macOS / Linux:**
 
 Compiling for `AMD64` Linux:
+
 ```bash
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o icicle-linux-amd64 ./cmd/icicle
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o build/icicle-linux-amd64 ./cmd/icicle
 ```
 
 Compiling for `ARM64` Linux:
+
 ```bash
-CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o icicle-linux-arm64 ./cmd/icicle
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" -o build/icicle-linux-arm64 ./cmd/icicle
 ```
 
 **Compiling from Windows:**
@@ -77,13 +79,13 @@ Open PowerShell terminal
 Compiling for `AMD64` Linux:
 
 ```powershell
-$env:CGO_ENABLED="0"; $env:GOOS="linux"; $env:GOARCH="amd64"; go build -trimpath -ldflags="-s -w" -o icicle-linux-amd64 ./cmd/icicle
+$env:CGO_ENABLED="0"; $env:GOOS="linux"; $env:GOARCH="amd64"; go build -trimpath -ldflags="-s -w" -o build/icicle-linux-amd64 ./cmd/icicle
 ```
 
 Compiling for `ARM64` Linux:
 
 ```powershell
-$env:CGO_ENABLED="0"; $env:GOOS="linux"; $env:GOARCH="arm64"; go build -trimpath -ldflags="-s -w" -o icicle-linux-arm64 ./cmd/icicle
+$env:CGO_ENABLED="0"; $env:GOOS="linux"; $env:GOARCH="arm64"; go build -trimpath -ldflags="-s -w" -o build/icicle-linux-arm64 ./cmd/icicle
 ```
 
 ### Building with Docker
@@ -91,15 +93,17 @@ $env:CGO_ENABLED="0"; $env:GOOS="linux"; $env:GOARCH="arm64"; go build -trimpath
 If you do not have Go 1.24+ installed on your workstation, build inside the official Go container:
 
 Build for `AMD64` Linux:
+
 ```bash
 docker run --rm -v "$PWD":/src -w /src golang:1.24-alpine \
-    sh -c "CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o icicle-linux-amd64 ./cmd/icicle"
+    sh -c "CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o build/icicle-linux-amd64 ./cmd/icicle"
 ```
 
 Build for `ARM64` Linux:
+
 ```bash
 docker run --rm -v "$PWD":/src -w /src golang:1.24-alpine \
-    sh -c "CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags='-s -w' -o icicle-linux-arm64 ./cmd/icicle"
+    sh -c "CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags='-s -w' -o build/icicle-linux-arm64 ./cmd/icicle"
 ```
 
 ---
@@ -113,10 +117,12 @@ Follow these steps to deploy Icicle as a hardened, unprivileged system service o
 1. Transfer your compiled binary to the server:
 
    ```bash
-   scp icicle-linux-amd64 user@your-server-ip:/tmp/icicle
+   scp build/<built-icicle-binary> user@your-server-ip:/tmp/icicle
    ```
 
    or download latest release from GitHub (coming soon)
+
+   or skip this if you built it directly on your server
 
 2. SSH into your server and create a dedicated system user and group:
 

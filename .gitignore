@@ -1,5 +1,6 @@
 /icicle
 /icicle.exe
+/build/
 *.pem
 *.key
 coverage.out
